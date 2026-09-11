@@ -6,6 +6,7 @@ import { calcSubtotalCents, calcTotalCents } from '@/features/cart/cartMath'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 import { createOrder } from '@/services/orders'
+import type { ShippingQuote } from '@/services/shipping'
 import type { CreatePaymentResult } from '@/services/payments'
 import { CheckoutStepper } from '@/components/checkout/CheckoutStepper'
 import { StepIdentification } from '@/components/checkout/StepIdentification'
@@ -39,6 +40,7 @@ export function CheckoutPage() {
   })
   const [address, setAddress] = React.useState<AddressData>(emptyAddress)
   const [shippingMethod, setShippingMethod] = React.useState<ShippingMethod | null>(null)
+  const [shippingQuote, setShippingQuote] = React.useState<ShippingQuote | null>(null)
   const [order, setOrder] = React.useState<{
     id: string
     number: string
@@ -57,6 +59,10 @@ export function CheckoutPage() {
     }
   }, [profile])
 
+  React.useEffect(() => {
+    setShippingQuote(null)
+  }, [address.cep])
+
   if (items.length === 0 && !order) {
     return <Navigate to={paths.cart} replace />
   }
@@ -69,7 +75,9 @@ export function CheckoutPage() {
   const shippingCents = shippingMethod
     ? coupon?.freeShipping
       ? 0
-      : calcShippingCostPreview(settings.freight_rules[shippingMethod], subtotalCents)
+      : shippingQuote
+        ? shippingQuote.cost_cents
+        : calcShippingCostPreview(settings.freight_rules[shippingMethod], subtotalCents)
     : null
   const totalCents =
     order?.totalCents ??
@@ -87,6 +95,7 @@ export function CheckoutPage() {
         })),
         shippingAddress: address,
         shippingMethod,
+        shippingQuoteId: shippingQuote?.id ?? null,
         couponCode: coupon?.code ?? null,
         guestName: identification.name,
         guestEmail: identification.email,
@@ -141,6 +150,10 @@ export function CheckoutPage() {
               value={shippingMethod}
               onChange={setShippingMethod}
               subtotalCents={subtotalCents}
+              cepDestino={address.cep}
+              items={items.map((i) => ({ product_id: i.productId, quantity: i.quantity }))}
+              quote={shippingQuote}
+              onQuoteChange={setShippingQuote}
               onNext={handleConfirmShipping}
               onBack={() => setStep(2)}
             />

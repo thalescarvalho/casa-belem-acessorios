@@ -132,7 +132,33 @@ que o frontend envia — ver `supabase/functions/create-payment/index.ts`. O web
 o pedido — nunca confia no corpo da notificação recebida, e valida a assinatura (`x-signature`)
 antes de processar qualquer coisa.
 
-## 6. Rastreamento de entrega e notificações ao cliente
+## 6. Frete real (Melhor Envio)
+
+O método de entrega "Envio padrão" cota o frete de verdade (PAC, SEDEX, etc.) via
+[Melhor Envio](https://melhorenvio.com.br), usando o peso/dimensões cadastrados em cada produto
+(`/admin/produtos`) — nunca um valor vindo do frontend. Sem essa integração configurada, esse
+método volta automaticamente a usar o valor fixo definido em `/admin/configuracoes → Frete`.
+
+1. Crie uma conta em https://sandbox.melhorenvio.com.br (teste) e depois em
+   https://melhorenvio.com.br (produção) e gere um token de acesso (Gerenciar Tokens de acesso)
+2. Backend (secrets das Edge Functions):
+
+   ```bash
+   supabase secrets set MELHORENVIO_ACCESS_TOKEN=...
+   supabase secrets set MELHORENVIO_SANDBOX=true   # "false" ao trocar para o token de produção
+   ```
+
+3. Deploy da function:
+
+   ```bash
+   supabase functions deploy calculate-shipping-quote
+   ```
+
+4. Em `/admin/configuracoes → Frete`, preencha o **CEP de origem** (de onde os pacotes saem)
+5. Cadastre peso e dimensões reais em cada produto (`/admin/produtos`) — sem isso, a cotação usa um
+   fallback de embalagem pequena (300g, 16x11x2cm) que não reflete o peso real do item
+
+## 7. Rastreamento de entrega e notificações ao cliente
 
 Três canais, independentes entre si:
 
@@ -158,13 +184,13 @@ Três canais, independentes entre si:
   Sem a `RESEND_API_KEY` configurada, a function apenas ignora a chamada (não gera erro nem
   bloqueia a criação/atualização do pedido).
 
-## 7. Desenvolvimento
+## 8. Desenvolvimento
 
 ```bash
 npm run dev
 ```
 
-## 8. Qualidade
+## 9. Qualidade
 
 ```bash
 npm run lint         # ESLint
@@ -180,7 +206,7 @@ Os testes E2E (`e2e/*.spec.ts`) exigem um projeto Supabase real, conectado e com
 na etapa de cadastro/produto — não é um bug do teste, é a dependência de ambiente documentada no
 topo de cada arquivo.
 
-## 9. Deploy
+## 10. Deploy
 
 1. Configure as variáveis de ambiente de produção no seu provedor (Vercel/Netlify/Cloudflare
    Pages/etc.), usando as chaves de **produção** do Supabase e do Mercado Pago
@@ -196,7 +222,7 @@ topo de cada arquivo.
 4. Configure o SPA fallback (todas as rotas devem servir `index.html`) no seu provedor de deploy —
    é uma aplicação client-side (React Router).
 
-## 10. Limitações conhecidas / próximos passos
+## 11. Limitações conhecidas / próximos passos
 
 - **SEO em crawlers que não executam JS**: as tags Open Graph/meta são escritas via JavaScript no
   cliente (`src/components/common/Seo.tsx`). O Googlebot renderiza JS e indexa normalmente, mas
@@ -208,14 +234,10 @@ topo de cada arquivo.
   importação (campos: SKU, nome, categoria, descrição, preço, preço promocional, estoque, peso,
   marca, tags — mesmos campos do formulário de produto em `/admin/produtos`), mas a tela de upload
   de CSV em si ainda não foi construída; por ora, o cadastro é feito produto a produto no painel.
-- **Frete via Correios/transportadora**: hoje o frete é configurável (retirada, entrega local,
-  padrão com valor fixo + frete grátis acima de X, ou grátis) em `/admin/configuracoes`. A
-  arquitetura (`public.calculate_shipping` no banco) foi desenhada para depois trocar o cálculo do
-  método "padrão" por uma chamada real a uma API de frete, sem mudar o checkout.
 - **Avaliações**: ficam pendentes de aprovação por padrão (moderação manual no admin) antes de
   aparecerem na página do produto.
 
-## 11. Estrutura do projeto
+## 12. Estrutura do projeto
 
 ```
 src/
@@ -230,7 +252,8 @@ src/
 
 supabase/
 ├── migrations/         # Schema completo + RLS (versionado, aplicado via CLI)
-├── functions/           # Edge Functions (create-payment, mercadopago-webhook)
+├── functions/           # Edge Functions (create-payment, mercadopago-webhook,
+│                        #   calculate-shipping-quote, send-order-email)
 ├── seed.sql              # Dados de demonstração
 └── config.toml
 
@@ -238,12 +261,17 @@ e2e/                    # Testes Playwright
 scripts/                # generate-sitemap.mjs
 ```
 
-## 12. Segurança
+## 13. Segurança
 
 - RLS habilitado em **todas** as tabelas, sem políticas "allow all" — ver comentários em cada
   migration para o racional de cada policy.
 - Nenhum valor de preço, desconto, frete ou aprovação de pagamento é confiado a partir do
   frontend: tudo é recalculado/validado no banco (`public.create_order`,
-  `public.validate_coupon`, `public.calculate_shipping`) ou nas Edge Functions.
-- `service_role key` e credenciais do Mercado Pago existem apenas como secrets de Edge Functions,
-  nunca no bundle do frontend.
+  `public.validate_coupon`, `public.calculate_shipping`) ou nas Edge Functions. O frete real via
+  transportadora segue o mesmo princípio: a Edge Function `calculate-shipping-quote` sempre lê
+  peso/dimensões do produto no banco (nunca do payload) e grava a cotação em
+  `public.shipping_quotes`, que `public.create_order` valida (existe, não expirou, é para o CEP do
+  pedido) antes de usar como `shipping_cents` — a tabela não tem nenhuma policy de select/insert
+  para anon/authenticated.
+- `service_role key` e credenciais do Mercado Pago e do Melhor Envio existem apenas como secrets
+  de Edge Functions, nunca no bundle do frontend.

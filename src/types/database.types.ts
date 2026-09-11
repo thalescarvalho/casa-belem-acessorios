@@ -337,11 +337,36 @@ export interface Database {
           tracking_code: string | null
           carrier: string | null
           tracking_url: string | null
+          shipping_quote_id: string | null
           created_at: string
           updated_at: string
         }
         Insert: Partial<Database['public']['Tables']['orders']['Row']>
         Update: Partial<Database['public']['Tables']['orders']['Row']>
+        Relationships: NoRelationships
+      }
+      shipping_quotes: {
+        Row: {
+          id: string
+          cep_destino: string
+          carrier_name: string
+          service_name: string
+          cost_cents: number
+          deadline_days: number | null
+          weight_grams: number
+          raw_response: Json | null
+          expires_at: string
+          created_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['shipping_quotes']['Row']> & {
+          cep_destino: string
+          carrier_name: string
+          service_name: string
+          cost_cents: number
+          weight_grams: number
+          expires_at: string
+        }
+        Update: Partial<Database['public']['Tables']['shipping_quotes']['Row']>
         Relationships: NoRelationships
       }
       order_items: {
@@ -590,6 +615,7 @@ export interface Database {
           p_guest_cpf?: string | null
           p_guest_phone?: string | null
           p_notes?: string | null
+          p_shipping_quote_id?: string | null
         }
         Returns: { order_id: string; order_number: string; total_cents: number }[]
       }

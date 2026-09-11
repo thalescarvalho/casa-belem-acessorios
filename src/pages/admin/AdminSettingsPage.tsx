@@ -111,6 +111,7 @@ export function AdminSettingsPage() {
     accent: '',
   })
   const [benefits, setBenefits] = React.useState<SiteBenefit[]>([])
+  const [shippingOriginCep, setShippingOriginCep] = React.useState('')
   const [freight, setFreight] = React.useState<FreightForm>({
     pickup: { enabled: true, costInput: '0,00', freeAboveInput: '' },
     local_delivery: { enabled: true, costInput: '0,00', freeAboveInput: '' },
@@ -155,6 +156,7 @@ export function AdminSettingsPage() {
     })
     setAppearance({ ...settings.theme_colors })
     setBenefits(settings.benefits)
+    setShippingOriginCep(settings.shipping_origin.cep)
     setFreight({
       pickup: {
         enabled: settings.freight_rules.pickup.enabled,
@@ -246,6 +248,7 @@ export function AdminSettingsPage() {
           },
           free: { enabled: freight.free.enabled, cost_cents: reaisToCents(freight.free.costInput) },
         },
+        shipping_origin: { cep: shippingOriginCep.replace(/\D/g, '') },
       }),
     onSuccess: () => toast.success('Regras de frete salvas.'),
     onError: (error: Error) => toast.error(error.message || 'Erro ao salvar.'),
@@ -614,6 +617,18 @@ export function AdminSettingsPage() {
               <CardTitle>Frete</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="max-w-xs">
+                <Label>CEP de origem (frete real)</Label>
+                <Input
+                  value={shippingOriginCep}
+                  onChange={(e) => setShippingOriginCep(e.target.value)}
+                  placeholder="00000000"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  De onde os pacotes saem. Necessário para o método "Entrega padrão" cotar o frete
+                  real (Melhor Envio) por CEP do cliente — sem isso, ele usa o valor fixo abaixo.
+                </p>
+              </div>
               {(
                 [
                   ['pickup', 'Retirada na loja'],

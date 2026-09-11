@@ -31,6 +31,11 @@ export interface SiteSettings {
     standard: FreightRule
     free: FreightRule
   }
+  // CEP de onde os pacotes saem — usado pela Edge Function
+  // calculate-shipping-quote para cotar o frete real (Melhor Envio) do
+  // método "standard". Sem isso configurado, a cotação real fica indisponível
+  // e o checkout usa o valor fixo de freight_rules.standard.cost_cents.
+  shipping_origin: { cep: string }
   payment_methods: { pix: boolean; credit_card: boolean; max_installments: number }
   policies: { returns: string; privacy: string; shipping: string }
   social_links: { instagram: string; facebook: string; tiktok: string }
@@ -57,6 +62,7 @@ export const defaultSiteSettings: SiteSettings = {
     standard: { enabled: true, cost_cents: 2500, free_above_cents: 30000 },
     free: { enabled: false, cost_cents: 0 },
   },
+  shipping_origin: { cep: '' },
   payment_methods: { pix: true, credit_card: true, max_installments: 3 },
   policies: { returns: '', privacy: '', shipping: '' },
   social_links: { instagram: '', facebook: '', tiktok: '' },

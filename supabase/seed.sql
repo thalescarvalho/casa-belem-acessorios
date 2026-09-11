@@ -50,6 +50,12 @@ insert into public.site_settings (key, value) values
     }'::jsonb
   ),
   (
+    -- [DEMO] vazio de propósito — sem CEP de origem, "Entrega padrão" usa o
+    -- valor fixo de freight_rules.standard acima em vez de cotar frete real.
+    'shipping_origin',
+    '{"cep": ""}'::jsonb
+  ),
+  (
     'payment_methods',
     '{"pix": true, "credit_card": true, "max_installments": 3}'::jsonb
   ),

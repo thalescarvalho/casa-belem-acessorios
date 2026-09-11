@@ -26,6 +26,7 @@ export interface CreateOrderParams {
   guestCpf?: string
   guestPhone?: string
   notes?: string
+  shippingQuoteId?: string | null
 }
 
 export async function createOrder(params: CreateOrderParams) {
@@ -39,6 +40,7 @@ export async function createOrder(params: CreateOrderParams) {
     p_guest_cpf: params.guestCpf ?? null,
     p_guest_phone: params.guestPhone ?? null,
     p_notes: params.notes ?? null,
+    p_shipping_quote_id: params.shippingQuoteId ?? null,
   })
   if (error) throw error
   const row = Array.isArray(data) ? data[0] : data
